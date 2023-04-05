@@ -1,4 +1,3 @@
- 
 import json
 from random import sample
 from tqdm import tqdm
@@ -61,7 +60,7 @@ def format_annotations():
                             "question_id" : annotation['question_id'],
                             'question_type': annotation['question_type'],
                             "question" : question['question'],
-                            "anwers" : annotation['answers'],
+                            "answers" : annotation['answers'],
                             "data_subtype" : phase
                         })
 

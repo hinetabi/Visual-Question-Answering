@@ -3,7 +3,9 @@ import json
 from torch.utils.data import Dataset
 import os
 from PIL import Image
+# from utils import pre_question
 from dataset.utils import pre_question
+
 
 class ImageDataset(Dataset):
     """Some Information about ImageDataset"""
@@ -18,7 +20,7 @@ class ImageDataset(Dataset):
         self.max_ques_words = max_ques_words
         self.eos = eos
 
-        if split == 'test':
+        if split == 'val':
             self.max_ques_words = 50 # do not limit questions length during test
             self.answer_list = json.load(open(answer_list, 'r'))
             
@@ -33,7 +35,8 @@ class ImageDataset(Dataset):
         image_path = os.path.join(self.vqa_root, f'{self.split}2014', local_image_path)
         
         image = Image.open(image_path).convert('RGB')
-        image = self.transform(image)
+        if self.transform:
+            image = self.transform(image)
         
         if self.split == 'test':
             question = pre_question(ann['question'], self.max_ques_words)
@@ -42,13 +45,14 @@ class ImageDataset(Dataset):
             return image, question, question_id
         
         elif self.split == 'train':
-            question = pre_question(ann['question', self.max_ques_words])
+            question = pre_question(ann['question'], self.max_ques_words)
             ans_weights = {}
-            for answer in ann['answers']:
-                if answer in ans_weights.key():
-                    ans_weights[answer] += 1/len(ann['answers'])
+            for answer in ann['anwers']:
+                answer = answer['answer']
+                if answer in ans_weights.keys():
+                    ans_weights[answer] += 1/len(ann['anwers'])
                 else:
-                    ans_weights[answer] = 1/len(ann['answers'])
+                    ans_weights[answer] = 1/len(ann['anwers'])
 
             answers = list(ans_weights.keys())
             weights = list(ans_weights.values())
@@ -63,4 +67,10 @@ class ImageDataset(Dataset):
 # class ImageDataset():
 
 # class 
-    
+# if __name__ == '__main__':
+#     import yaml
+#     args = 'configs/dataset.yaml'
+#     config = yaml.load(open(args, 'r'), Loader=yaml.Loader)
+
+#     train_dataset = ImageDataset(config['train_file'], transform = None, vqa_root=config['vqa_root'], split='train') 
+#     print(train_dataset.__len__)
