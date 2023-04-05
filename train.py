@@ -88,7 +88,7 @@ def evaluation(model, test_loader, tokenizer, config):
 def main(args, config):
     
     # config
-    seed = config.seed
+    seed = config['seed']
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
@@ -158,6 +158,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     config = yaml.load(open(args.config, 'r'), Loader=yaml.Loader)
+    
+    # update arguments into config
+    for k,v in args._get_kwargs():
+        config[k] = v    
 
     args.result_dir = os.path.join(args.output_dir, 'result')
 

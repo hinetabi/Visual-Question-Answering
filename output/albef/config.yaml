@@ -1,0 +1,38 @@
+alpha: 0.4
+batch_size_test: 8
+batch_size_train: 16
+bert_config: configs/config_bert.json
+checkpoint: ''
+config: ./configs/dataset.yaml
+device: cuda
+dist_url: env://
+distill: false
+distributed: false
+eos: '[SEP]'
+evaluate: false
+image_res: 384
+k_test: 128
+optimizer:
+  lr: 2e-5
+  opt: adamW
+  weight_decay: 0.02
+output_dir: output/albef
+schedular:
+  cooldown_epochs: 0
+  decay_rate: 1
+  epochs: 8
+  lr: 2e-5
+  min_lr: 1e-6
+  sched: cosine
+  warmup_epochs: 4
+  warmup_lr: 1e-5
+seed: 42
+test_file:
+- data/sample_test_formated.json
+text_decoder: bert-base-uncased
+text_encoder: bert-base-uncased
+train_file:
+- data/sample_train_formatted.json
+vqa_root: data/
+warm_up: true
+world_size: 1
