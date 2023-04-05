@@ -39,10 +39,21 @@ class ImageDataset(Dataset):
             
             return image, question, question_id
         
-        
-        
-        
-        return 
+        elif self.split == 'train':
+            question = pre_question(ann['question', self.max_ques_words])
+            ans_weights = {}
+            for answer in ann['answers']:
+                if answer in ans_weights.key():
+                    ans_weights[answer] += 1/len(ann['answer'])
+                else:
+                    ans_weights[answer] = 1/len(ann['answer'])
+
+            answers = list(ans_weights.keys())
+            weights = list(ans_weights.values())
+
+            answers = [answer + self.eos for answer in answers]
+
+        return image, question, answers, weights
 
     def __len__(self):
         return len(self.ann)

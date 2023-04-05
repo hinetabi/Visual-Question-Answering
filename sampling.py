@@ -47,8 +47,11 @@ def read_file_json(filename):
     f.close()
 
     return data
+    
 
-# read_file_json("data/v2_mscoco_train2014_annotations.json")
+# read_file_json("data/v2_mscoco_train2014_annotations.json") 
+# read_file_json("data/v2_OpenEnded_mscoco_train2014_questions.json") 
+
 # sampling_data('data\\v2_Questions_Val_mscoco\\v2_OpenEnded_mscoco_val2014_questions.json', 'data/sample_val.json', 0.1)
 # sampling_data('data\\v2_Questions_Train_mscoco\\v2_OpenEnded_mscoco_train2014_questions.json', 'data/sample_train.json', 0.1)
 
@@ -59,17 +62,23 @@ def read_file_json(filename):
 if __name__ == '__main__':
     for ln in ['train', 'val']:
         
-        samples = read_file_json(f'data/sample_{ln}.json')
-        annotations = read_file_json(f'data/v2_mscoco_{ln}2014_annotations.json')
-        questions = read_file_json(f'data/v2_OpenEnded_mscoco_{ln}2014_questions.json')
+        annotations = read_file_json(f'data/v2_mscoco_{ln}2014_annotations.json') # image id, question id, answer
+        questions = read_file_json(f'data/v2_OpenEnded_mscoco_{ln}2014_questions.json') # image id, question id, question
         
-        save_ann_for_training = {}
-        for sample in tqdm(samples['questions']):
-            for annotation in annotations['annotations']:
-                if sample['image_id'] == annotation['image_id'] and sample['question_id'] == annotation['question_id']:
-                    sample['answers'] = annotation['answers']
-                    sample['question_type'] = annotation['question_type']
-                    sample['answer_type'] = annotation['answer_type']
+        save_ann_for_training = []
+        for annotation in tqdm(annotations['annotations']):
+            for question in questions['questions']:
+                if annotation['image_id'] == question['image_id']:
+                    if annotation['question_id'] == question['question_id']:
+                        save_ann_for_training.append({
+                            "image_id" : annotation['image_id'],
+                            "question_id" : annotation['question_id'],
+                            'question_type': annotation['question_type'],
+                            "question" : question['question'],
+                            "anwers" : annotation['answers'],
+                            "data_subtype" : ln
+                        })
+
         
         with open(f'data/{ln}_formatted.json', 'w') as f:
             json.dump(save_ann_for_training, f)
