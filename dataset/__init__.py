@@ -5,7 +5,7 @@ from dataset.randaugment import RandomAugment
 from torchvision import transforms
 from dataset.dataset import ImageDataset
 
-def create_dataset(dataset, config):
+def create_dataset(config):
     normalize = transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
     
     train_transform = transforms.Compose([                        
@@ -24,7 +24,7 @@ def create_dataset(dataset, config):
         ])   
     
     train_dataset = ImageDataset(config['train_file'], train_transform, config['vqa_root'], split='train') 
-    vqa_test_dataset = ImageDataset(config['test_file'], test_transform, config['vqa_root'], split='test', answer_list=config['answer_list'])       
+    vqa_test_dataset = ImageDataset(config['test_file'], test_transform, config['vqa_root'], split='val', answer_list=config['answer_list'])       
     return train_dataset, vqa_test_dataset
     
 def create_loader(datasets, samplers, batch_size, num_workers, is_trains, collate_fns):

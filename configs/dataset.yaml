@@ -1,18 +1,17 @@
-train_file: ['data/sample_train.json',
-            'data/sample_test.json']
+train_file: ['data/sample_train_formatted.json']
              
-test_file: ['data/sample_test.json']
-answer_list: 'data/answer_list.json'
+test_file: ['data/sample_test_formated.json']
+# answer_list: 'data/answer_list.json'
 
-vqa_root: '/data' #train2014/
+vqa_root: 'data/' #train2014/
 
 image_res: 384
-batch_size_train: 32 
-batch_size_test: 16 
+batch_size_train: 16 
+batch_size_test: 8 
 k_test: 128
 
 alpha: 0.4
-distill: True
+distill: False
 warm_up: True
 
 eos: '[SEP]'

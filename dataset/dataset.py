@@ -30,7 +30,7 @@ class ImageDataset(Dataset):
         max_len = 12
         local_image_path = f"COCO_{self.split}2014_" + "0" * (max_len - len(str(ann['image_id']))) + str(ann['image_id']) + '.jpg'
         # set path
-        image_path = os.path.join(self.vqa_root, local_image_path)
+        image_path = os.path.join(self.vqa_root, f'{self.split}2014', local_image_path)
         
         image = Image.open(image_path).convert('RGB')
         image = self.transform(image)
