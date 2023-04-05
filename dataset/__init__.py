@@ -3,10 +3,30 @@ import torch
 from torch.utils.data import DataLoader
 from dataset.randaugment import RandomAugment
 from torchvision import transforms
+from dataset.dataset import ImageDataset
 
 def create_dataset(dataset, config):
-    normalize = transforms.Normalize()
-
+    normalize = transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
+    
+    train_transform = transforms.Compose([                        
+            transforms.RandomResizedCrop(config['image_res'],scale=(0.5, 1.0), interpolation=Image.BICUBIC),
+            transforms.RandomHorizontalFlip(),
+            RandomAugment(2,7,isPIL=True,augs=['Identity','AutoContrast','Equalize','Brightness','Sharpness',
+                                              'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),     
+            transforms.ToTensor(),
+            normalize,
+        ])  
+    
+    test_transform = transforms.Compose([
+        transforms.Resize((config['image_res'],config['image_res']),interpolation=Image.BICUBIC),
+        transforms.ToTensor(),
+        normalize,
+        ])   
+    
+    train_dataset = ImageDataset(config['train_file'], train_transform, config['vqa_root'], config['vg_root'], split='train') 
+    vqa_test_dataset = ImageDataset(config['test_file'], test_transform, config['vqa_root'], config['vg_root'], split='test', answer_list=config['answer_list'])       
+    return train_dataset, vqa_test_dataset
+    
 def create_loader(datasets, samplers, batch_size, num_workers, is_trains, collate_fns):
     loaders = []
     for dataset, sampler, batch_size, num_worker, is_train, collate_fn in zip(datasets, samplers, batch_size, num_workers, is_trains, collate_fns):
