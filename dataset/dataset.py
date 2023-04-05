@@ -26,9 +26,11 @@ class ImageDataset(Dataset):
         
         ann = self.ann[index]
         
-        # vqa datasets
-        if ann['dataset'] == 'vqa':
-            image_path = os.path.join(self.vqa_root, ann['image'])
+        # sample_path = COCO_val2014_000000581929.jpg -> 12 digits
+        max_len = 12
+        local_image_path = f"COCO_{self.split}2014_" + "0" * (max_len - len(str(ann['image_id']))) + str(ann['image_id']) + '.jpg'
+        # set path
+        image_path = os.path.join(self.vqa_root, local_image_path)
         
         image = Image.open(image_path).convert('RGB')
         image = self.transform(image)
@@ -44,9 +46,9 @@ class ImageDataset(Dataset):
             ans_weights = {}
             for answer in ann['answers']:
                 if answer in ans_weights.key():
-                    ans_weights[answer] += 1/len(ann['answer'])
+                    ans_weights[answer] += 1/len(ann['answers'])
                 else:
-                    ans_weights[answer] = 1/len(ann['answer'])
+                    ans_weights[answer] = 1/len(ann['answers'])
 
             answers = list(ans_weights.keys())
             weights = list(ans_weights.values())

@@ -23,8 +23,8 @@ def create_dataset(dataset, config):
         normalize,
         ])   
     
-    train_dataset = ImageDataset(config['train_file'], train_transform, config['vqa_root'], config['vg_root'], split='train') 
-    vqa_test_dataset = ImageDataset(config['test_file'], test_transform, config['vqa_root'], config['vg_root'], split='test', answer_list=config['answer_list'])       
+    train_dataset = ImageDataset(config['train_file'], train_transform, config['vqa_root'], split='train') 
+    vqa_test_dataset = ImageDataset(config['test_file'], test_transform, config['vqa_root'], split='test', answer_list=config['answer_list'])       
     return train_dataset, vqa_test_dataset
     
 def create_loader(datasets, samplers, batch_size, num_workers, is_trains, collate_fns):

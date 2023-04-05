@@ -1,5 +1,12 @@
-a = [{"doc" : 1}, {"doc" : 2}, {"doc" : 3}]
+class test:
+    def __init__(self):
+        self.split = 'train'
+        ann = {"image_id" : 581929}
+        max_len = 12
+        self.local_image_path = f"COCO_{self.split}2014_" + "0" * (12 - len(str(ann['image_id']))) + str(ann['image_id']) + '.jpg'
+    
+    def get(self):
+        return self.local_image_path
 
-for i in a:
-    i['hello'] = 10
-print(a)
+test = test()
+print(test.get())

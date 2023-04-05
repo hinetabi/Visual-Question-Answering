@@ -11,11 +11,11 @@ def sampling_data(url, saved_url, sampling_size):
 
     # returns JSON object as a dictionary
     data = json.load(f)
-    print(len(data['questions']))
+    print(len(data))
 
     # data train ['questions']
     image_ids = set()
-    for question in data['questions']:
+    for question in data:
         image_ids.add(question['image_id'])
     
     # random
@@ -24,15 +24,11 @@ def sampling_data(url, saved_url, sampling_size):
     ans = {}
     ans['questions'] = []
     temp = {}
-    for question in data['questions']:
+    for question in data:
         if question['image_id'] in image_ids:
-            ans['questions'].append({
-                'image_id' : question['image_id'],
-                'question' : question['question'],
-                'question_id' : question['question_id']
-            })
+            ans.append(question)
     
-    print(len(ans['questions']))
+    print(len(ans))
     
     with open(saved_url, "w") as outfile:
         json.dump(ans, outfile)
@@ -47,14 +43,6 @@ def read_file_json(filename):
     f.close()
 
     return data
-    
-
-# read_file_json("data/v2_mscoco_train2014_annotations.json") 
-# read_file_json("data/v2_OpenEnded_mscoco_train2014_questions.json") 
-
-# sampling_data('data\\v2_Questions_Val_mscoco\\v2_OpenEnded_mscoco_val2014_questions.json', 'data/sample_val.json', 0.1)
-# sampling_data('data\\v2_Questions_Train_mscoco\\v2_OpenEnded_mscoco_train2014_questions.json', 'data/sample_train.json', 0.1)
-
 
 # TODO: transfer the data -> data used for training
 # annotations include image_id, question_id, answers -> train from this. 
