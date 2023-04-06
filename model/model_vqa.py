@@ -21,7 +21,7 @@ class ALBEF(nn.Module):
         self.distill = config['distill']
  
         self.visual_encoder = VisionTransformer(
-            img_size=config['image_res'], patch_size=16, embed_dim=768, depth=12, num_heads=12, 
+            img_size=config['image_res'], patch_size=16, embed_dim=768, depth=4, num_heads=2, 
             mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6))    
 
         config_encoder = BertConfig.from_json_file(config['bert_config']) 
@@ -67,8 +67,8 @@ class ALBEF(nn.Module):
                                                 encoder_attention_mask = image_atts,                             
                                                 return_dict = True)    
 
-            #  what happens here??? may be a multimodal encoder for encode questions and image 
-            # mask the question
+            
+            # information of question, includes question_output last hidden state and question attention mask.
             question_states = []                
             question_atts = []  
             for b, n in enumerate(k):
@@ -107,7 +107,7 @@ class ALBEF(nn.Module):
                                                   return_dict = True,   
                                                   soft_labels = F.softmax(logits_m,dim=-1),
                                                   alpha = alpha,
-                                                  reduction = 'none',
+                                                #   reduction = 'none',
                                                  )   
             else:
                 # decode the answer based on questions state and questions att (output of multimodal encoder)
@@ -117,8 +117,8 @@ class ALBEF(nn.Module):
                                                   encoder_attention_mask = question_atts,                  
                                                   labels = answer_targets,
                                                   return_dict = True,   
-                                                  reduction = 'none',
-                                                 )                      
+                                                #   reduction = 'none',
+                                                )                      
             loss = weights * answer_output.loss         
             loss = loss.sum()/image.size(0)
 
@@ -160,8 +160,8 @@ class ALBEF(nn.Module):
         start_output = self.text_decoder(start_ids, 
                                          encoder_hidden_states = question_states,
                                          encoder_attention_mask = question_atts,                                      
-                                         return_dict = True,
-                                         reduction = 'none')              
+                                         return_dict = True)
+                                        #  reduction = 'none')              
         logits = start_output.logits[:,0,:] # first token's logit
         
         # topk_probs: top-k probability 
@@ -190,8 +190,8 @@ class ALBEF(nn.Module):
                                    encoder_hidden_states = question_states,
                                    encoder_attention_mask = question_atts,     
                                    labels = targets_ids,
-                                   return_dict = True, 
-                                   reduction = 'none')                 
+                                   return_dict = True) 
+                                #    reduction = 'none')                 
 
         answer_loss = output.loss 
         answer_loss = answer_loss.view(input_ids.size(0),-1)

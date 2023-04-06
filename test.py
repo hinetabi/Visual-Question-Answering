@@ -8,5 +8,7 @@ class test:
     def get(self):
         return self.local_image_path
 
-test = test()
-print(test.get())
+# test = test()
+# print(test.get())
+
+import torch

@@ -16,6 +16,7 @@ from torch.optim import AdamW
 import time
 import datetime
 from tqdm import tqdm
+import wandb
 
 import utils
 
@@ -45,20 +46,34 @@ def train(model, train_loader, optimizer, tokenizer, epoch, config):
         # forward + backward + optimize
         loss.backward()
         optimizer.step()
+
+        # with torch.no_grad():
+            # eval the model
+            # eval_one_epoch()
         
+        # log to terminal
         metric_logger.update(loss=loss.item())
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
-        
     
     running_loss = running_loss / i
     print("Averaged stats:", metric_logger.global_avg())         
     return {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()} 
+
+@torch.no_grad()
+def eval_one_epoch(model, image, question, answer, weights, n, tokenizer, config):
+    image, weights = image.to(device,non_blocking=True), weights.to(device,non_blocking=True)      
+    question_input = tokenizer(question, padding='longest', truncation=True, max_length=25, return_tensors="pt").to(device) 
+    answer_input = tokenizer(answer, padding='longest', return_tensors="pt").to(device) 
+
+    with torch.no_grad():
+        topk_ids, topk_probs = model(image, question_input, answer_input, train = False, alpha=config['alpha'], k=n, weights=weights)
     
+    # zero the parameter gradients
+
 
 @torch.no_grad()
 def evaluation(model, test_loader, tokenizer, config):
     # test
-    
     model.eval()
     
     metric_logger = utils.MetricLogger(delimiter= " ")
@@ -86,7 +101,6 @@ def evaluation(model, test_loader, tokenizer, config):
     
 
 def main(args, config):
-    
     # config
     seed = config['seed']
     torch.manual_seed(seed)
@@ -113,19 +127,31 @@ def main(args, config):
     # epoch
     start_epoch = 0
     max_epoch = config['schedular']['epochs']
-    warmup_epoch = config['schedular']['warmup_epochs']
+    # warmup_epoch = config['schedular']['warmup_epochs']
     
     # optimizer
     optimizer = AdamW(model.parameters(), lr = float(config['optimizer']['lr']), weight_decay = float(config['optimizer']['weight_decay']))
-    # loss    
     # training
     print("Start training")
     start_time = time.time()
+
+    # wandb init
+    run = wandb.init(
+    # Set the project where this run will be logged
+    project="visual question answering",
+    # Track hyperparameters and run metadata
+    config={
+        "learning_rate": config['optimizer']['lr'],
+        "epochs": config['schedular']['epochs'],
+    })
+
     
     for epoch in range(start_epoch, max_epoch):
         if epoch > 0:
-            # lr step
             a = 0
+
+        print(torch.cuda.memory_summary(device=None, abbreviated=False))
+        
         if not args.evaluate:
             train_stats = train(model, train_loader, optimizer, tokenizer, epoch, config)
         
@@ -133,7 +159,7 @@ def main(args, config):
             break
     
     # evaluating
-    vqa_result = eval(model, test_loader, tokenizer, config)
+    # vqa_result = eval(model, test_loader, tokenizer, config)
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     

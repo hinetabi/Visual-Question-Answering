@@ -72,10 +72,14 @@ def format_annotations():
 
 
 if __name__ == '__main__':
-    for phase in ['train', 'val']:
-        sampling_data(url=f'data/{phase}_formatted.json', saved_url=f'data/sample_{phase}_formatted.json', sampling_size=0.1)    
-
-
+    # for phase in ['train', 'val']:
+    #     sampling_data(url=f'data/{phase}_formatted.json', saved_url=f'data/sample_{phase}_formatted.json', sampling_size=0.1)    
+    val_file = read_file_json("data/sample_val_formatted.json")
+    answer_list = []
+    for i, record in enumerate(val_file):
+        answer_list += record['anwers']
+    with open("data/answer_list.json", "w") as f:
+        json.dump(answer_list, f)
 
 
 

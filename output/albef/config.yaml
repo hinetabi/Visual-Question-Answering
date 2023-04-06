@@ -1,7 +1,7 @@
 alpha: 0.4
 answer_list: data/answer_list.json
-batch_size_test: 8
-batch_size_train: 16
+batch_size_test: 4
+batch_size_train: 8
 bert_config: configs/config_bert.json
 checkpoint: ''
 config: configs/dataset.yaml
@@ -14,7 +14,7 @@ evaluate: false
 image_res: 384
 k_test: 128
 optimizer:
-  lr: 2e-5
+  lr: 2e-6
   opt: adamW
   weight_decay: 0.02
 output_dir: output/albef
