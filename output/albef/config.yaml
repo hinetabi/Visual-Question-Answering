@@ -4,7 +4,7 @@ batch_size_test: 4
 batch_size_train: 8
 bert_config: configs/config_bert.json
 checkpoint: ''
-config: configs/dataset.yaml
+config: ./configs/dataset.yaml
 device: cuda
 dist_url: env://
 distill: false
@@ -22,7 +22,7 @@ schedular:
   cooldown_epochs: 0
   decay_rate: 1
   epochs: 8
-  lr: 2e-5
+  lr: 2e-6
   min_lr: 1e-6
   sched: cosine
   warmup_epochs: 4

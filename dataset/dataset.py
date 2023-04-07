@@ -37,27 +37,20 @@ class ImageDataset(Dataset):
         image = Image.open(image_path).convert('RGB')
         if self.transform:
             image = self.transform(image)
-        
-        if self.split == 'test':
-            question = pre_question(ann['question'], self.max_ques_words)
-            question_id = ann['question_id']
             
-            return image, question, question_id
-        
-        elif self.split == 'train':
-            question = pre_question(ann['question'], self.max_ques_words)
-            ans_weights = {}
-            for answer in ann['anwers']:
-                answer = answer['answer']
-                if answer in ans_weights.keys():
-                    ans_weights[answer] += 1/len(ann['anwers'])
-                else:
-                    ans_weights[answer] = 1/len(ann['anwers'])
+        question = pre_question(ann['question'], self.max_ques_words)
+        ans_weights = {}
+        for answer in ann['anwers']:
+            answer = answer['answer']
+            if answer in ans_weights.keys():
+                ans_weights[answer] += 1/len(ann['anwers'])
+            else:
+                ans_weights[answer] = 1/len(ann['anwers'])
 
-            answers = list(ans_weights.keys())
-            weights = list(ans_weights.values())
+        answers = list(ans_weights.keys())
+        weights = list(ans_weights.values())
 
-            answers = [answer + self.eos for answer in answers]
+        answers = [answer + self.eos for answer in answers]
 
         return image, question, answers, weights
 

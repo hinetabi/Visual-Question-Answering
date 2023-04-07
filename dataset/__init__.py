@@ -27,9 +27,8 @@ def create_dataset(config):
 
 
     train_dataset = ImageDataset(config['train_file'], train_transform, config['vqa_root'], split='train') 
-    # vqa_test_dataset = ImageDataset(config['test_file'], test_transform, config['vqa_root'], split='val', answer_list=config['answer_list'])       
-    # return train_dataset, vqa_test_dataset
-    return train_dataset, train_dataset
+    vqa_test_dataset = ImageDataset(config['test_file'], test_transform, config['vqa_root'], split='val', answer_list=config['answer_list'])       
+    return train_dataset, vqa_test_dataset
     
 def create_loader(datasets, samplers, batch_size, num_workers, is_trains, collate_fns):
     loaders = []

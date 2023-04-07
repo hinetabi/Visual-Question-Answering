@@ -59,7 +59,7 @@ def train(model, train_loader, optimizer, tokenizer, epoch, config):
 
 
 @torch.no_grad()
-def test(model, test_loader, optimizer, tokenizer, epoch, config):
+def test(model, test_loader, tokenizer, epoch, config):
     model.eval()
     
     metric_logger = utils.MetricLogger(delimiter=" ")
@@ -169,7 +169,7 @@ def main(args, config):
         
         if not args.evaluate:
             train_stats = train(model, train_loader, optimizer, tokenizer, epoch, config)
-            test_stats = test(model, test_loader, optimizer, tokenizer, epoch, config)
+            test_stats = test(model, test_loader, tokenizer, epoch, config)
             # log to wandb
             wandb.log({
                 **{f'train_{k}': v for k, v in train_stats.items()},
@@ -252,3 +252,6 @@ if __name__ == '__main__':
     yaml.dump(config, open(os.path.join(args.output_dir, 'config.yaml'), 'w'))    
     
     main(args, config)
+
+    # test loader need answer argument for running
+    # get to know about how model bert decode, run debug?
