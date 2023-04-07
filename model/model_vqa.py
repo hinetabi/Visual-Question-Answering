@@ -168,7 +168,7 @@ class ALBEF(nn.Module):
         # topk_ids: [num_question, k]        
         answer_first_token = answer_ids[:,1]
         prob_first_token = F.softmax(logits,dim=1).index_select(dim=1, index=answer_first_token) 
-        topk_probs, topk_ids = prob_first_token.topk(k,dim=1) 
+        topk_probs, topk_ids = [prob_first_token.topk(k,dim=1) for k in range(k) ]
         
         # answer input: [num_question*k, answer_len]                 
         input_ids = []

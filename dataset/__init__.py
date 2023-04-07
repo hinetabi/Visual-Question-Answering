@@ -38,7 +38,7 @@ def create_loader(datasets, samplers, batch_size, num_workers, is_trains, collat
             drop_last =  True
         else:
             shuffle = False
-            drop_last = False
+            drop_last = True
         loader = DataLoader(
             dataset,
             batch_size=batch_size,
