@@ -27,7 +27,7 @@ class ALBEF(nn.Module):
         config_encoder = BertConfig.from_json_file(config['bert_config']) 
         # create the text encoder
         self.text_encoder = BertModel.from_pretrained(text_encoder, config=config_encoder, add_pooling_layer=False)  
-            
+        
         config_decoder = BertConfig.from_json_file(config['bert_config'])
         config_decoder.fusion_layer = 0
         config_decoder.num_hidden_layers = 6

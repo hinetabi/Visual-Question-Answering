@@ -64,7 +64,7 @@ def format_annotations():
                             "data_subtype" : phase
                         })
 
-        
+           
         with open(f'data/{phase}_formatted.json', 'w') as f:
             json.dump(save_ann_for_training, f)
 
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     val_file = read_file_json("data/sample_val_formatted.json")
     answer_list = []
     for i, record in enumerate(val_file):
-        answer_list += record['anwers']
+        answer_list += [x['answer'] for x in record['anwers']]
     with open("data/answer_list.json", "w") as f:
         json.dump(answer_list, f)
 
