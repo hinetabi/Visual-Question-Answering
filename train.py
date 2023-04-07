@@ -17,6 +17,7 @@ import time
 import datetime
 from tqdm import tqdm
 import wandb
+import json
 
 import utils
 
@@ -47,28 +48,41 @@ def train(model, train_loader, optimizer, tokenizer, epoch, config):
         loss.backward()
         optimizer.step()
 
-        # with torch.no_grad():
-            # eval the model
-            # eval_one_epoch()
-        
         # log to terminal
         metric_logger.update(loss=loss.item())
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
+        
     
     running_loss = running_loss / i
     print("Averaged stats:", metric_logger.global_avg())         
     return {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()} 
 
-@torch.no_grad()
-def eval_one_epoch(model, image, question, answer, weights, n, tokenizer, config):
-    image, weights = image.to(device,non_blocking=True), weights.to(device,non_blocking=True)      
-    question_input = tokenizer(question, padding='longest', truncation=True, max_length=25, return_tensors="pt").to(device) 
-    answer_input = tokenizer(answer, padding='longest', return_tensors="pt").to(device) 
 
-    with torch.no_grad():
-        topk_ids, topk_probs = model(image, question_input, answer_input, train = False, alpha=config['alpha'], k=n, weights=weights)
+@torch.no_grad()
+def test(model, test_loader, optimizer, tokenizer, epoch, config):
+    model.eval()
     
-    # zero the parameter gradients
+    metric_logger = utils.MetricLogger(delimiter=" ")
+    metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
+    metric_logger.add_meter('loss', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
+    header = 'Test Epoch: [{}]'.format(epoch)
+    print_freq = 50    
+    
+    # loop over the dataset multiple times
+    running_loss = 0.0
+    for i,(image, question, answer, weights, n) in tqdm(enumerate(metric_logger.log_every(test_loader, print_freq, header))):
+        image, weights = image.to(device,non_blocking=True), weights.to(device,non_blocking=True)      
+        question_input = tokenizer(question, padding='longest', truncation=True, max_length=25, return_tensors="pt").to(device) 
+        answer_input = tokenizer(answer, padding='longest', return_tensors="pt").to(device) 
+        with torch.no_grad():
+            loss = model(image, question_input, answer_input, train=True, alpha=config['alpha'], k=n, weights=weights)        
+
+        # log to terminal
+        metric_logger.update(loss=loss.item())
+    
+    running_loss = running_loss / i
+    print("Averaged stats:", metric_logger.global_avg())         
+    return {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()} 
 
 
 @torch.no_grad()
@@ -145,6 +159,7 @@ def main(args, config):
         "epochs": config['schedular']['epochs'],
     })
 
+    model_without_ddp = model
     
     for epoch in range(start_epoch, max_epoch):
         if epoch > 0:
@@ -154,10 +169,51 @@ def main(args, config):
         
         if not args.evaluate:
             train_stats = train(model, train_loader, optimizer, tokenizer, epoch, config)
+            test_stats = test(model, test_loader, optimizer, tokenizer, epoch, config)
+            # log to wandb
+            wandb.log({
+                **{f'train_{k}': v for k, v in train_stats.items()},
+                'epoch': epoch,
+            })
+            
+            wandb.log({**{f'test_{k}': v for k, v in test_stats.items()},
+                         'epoch': epoch,
+                        })
+            
         
         if args.evaluate:
             break
-    
+            
+        # save log for training
+        log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
+                         'epoch': epoch,
+                        }                
+        with open(os.path.join(args.output_dir, "train", "log.txt"),"a") as f:
+            f.write(json.dumps(log_stats) + "\n")                        
+                        
+        save_obj = {
+            'model': model_without_ddp.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'config': config,
+            'epoch': epoch,
+        }
+        torch.save(save_obj, os.path.join(args.output_dir, "train", 'checkpoint_%02d.pth'%epoch))
+        
+        # save log for testing
+        log_stats = {**{f'test_{k}': v for k, v in test_stats.items()},
+                         'epoch': epoch,
+                        }                
+        with open(os.path.join(args.output_dir,"test", "log.txt"),"a") as f:
+            f.write(json.dumps(log_stats) + "\n")                        
+                        
+        save_obj = {
+            'model': model_without_ddp.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'config': config,
+            'epoch': epoch,
+        }
+        torch.save(save_obj, os.path.join(args.output_dir, "test", 'checkpoint_%02d.pth'%epoch))
+
     # evaluating
     # vqa_result = eval(model, test_loader, tokenizer, config)
     total_time = time.time() - start_time
