@@ -132,7 +132,7 @@ def main(args, config):
                                             batch_size=[config['batch_size_train'], config['batch_size_test']], 
                                             num_workers=[4,4], 
                                             is_trains=[True, False],
-                                            collate_fns=[vqa_collate_fn, vqa_collate_fn])
+                                            collate_fns=[vqa_collate_fn, None])
     
     # tokenizer for questions and answers
     tokenizer = BertTokenizer.from_pretrained(args.text_encoder)

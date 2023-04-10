@@ -5,17 +5,21 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from transformers import BertConfig, BertModel, BertForQuestionAnswering
+from model.ViT import VisionTransformer
+from functools import partial
 
-
-class ALBEF(nn.Module):
+class QuestionAnswerClassifier(nn.Module):
     def __init__(self,                 
                  text_encoder = None,
                  text_decoder = None,
                  tokenizer = None,
-                 config = None,     
+                 config = None, 
+                 n_labels = 3128    
                  ):
         super().__init__()
-        self.image_encoder = resnet50(ResNet50_Weights.IMAGENET1K_V2)
+        self.visual_encoder = VisionTransformer(
+            img_size=config['image_res'], patch_size=16, embed_dim=768, depth=4, num_heads=2, 
+            mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6))  
         # self.image_encoder = 
         
         # create the text encoder
@@ -25,14 +29,30 @@ class ALBEF(nn.Module):
         config_decoder = BertConfig.from_json_file(config['bert_config'])
         config_decoder.fusion_layer = 0
         config_decoder.num_hidden_layer = 6
-        self.text_decoder = BertForQuestionAnswering.from_pretrained(text_decoder, config = config_decoder)
+        # self.text_decoder = BertForQuestionAnswering.from_pretrained(text_decoder, config = config_decoder)
         
-
-    def forward(self, image, question, answer=None, alpha=0, k=None, weights=None, train=True):
-        image_encoded = self.image_encoder(image)
+        # self.tokenizer =  tokenizer
         
-
-
-if __name__ == '__main__':
-    image_encoder = resnet50(ResNet50_Weights.IMAGENET1K_V2)
-    print(image_encoder)
+        self.classifier = nn.Sequential(
+            nn.Linear(in_features=1000, out_features=784),
+            nn.Dropout(p=0.5, inplace=False),
+            nn.Linear(in_features=784, out_features=n_labels),
+            nn.Dropout(p=0.5, inplace=False)
+        )
+        
+    def forward(self, image, question):
+        image_embeds = self.visual_encoder(image)
+        image_atts = torch.ones(image_embeds.size()[:-1],dtype=torch.long).to(image.device)
+        
+        
+        # encode the question (with the image embeds)
+        question_encoder =  self.text_encoder(
+                                            question.input_ids, 
+                                            attention_mask = question.attention_mask, 
+                                            encoder_hidden_states = image_embeds,
+                                            encoder_attention_mask = image_atts,                             
+                                            return_dict = True)
+        
+        
+        # process the question_encoder after a classification
+        return self.classifier(question_encoder)
