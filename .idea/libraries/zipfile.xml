@@ -1,0 +1,14 @@
+<component name="libraryTable">
+  <library name="zipfile">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/data/zipfile/v2_Questions_Train_mscoco.zip!/" />
+      <root url="jar://$PROJECT_DIR$/data/zipfile/v2_Questions_Val_mscoco.zip!/" />
+      <root url="jar://$PROJECT_DIR$/data/zipfile/train2014.zip!/" />
+      <root url="jar://$PROJECT_DIR$/data/zipfile/v2_Annotations_Train_mscoco.zip!/" />
+      <root url="jar://$PROJECT_DIR$/data/zipfile/val2014.zip!/" />
+      <root url="jar://$PROJECT_DIR$/data/zipfile/v2_Annotations_Val_mscoco.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

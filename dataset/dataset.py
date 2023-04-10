@@ -28,7 +28,6 @@ class ImageDataset(Dataset):
         
         ann = self.ann[index]
         
-        # sample_path = COCO_val2014_000000581929.jpg -> 12 digits
         max_len = 12
         local_image_path = f"COCO_{self.split}2014_" + "0" * (max_len - len(str(ann['image_id']))) + str(ann['image_id']) + '.jpg'
         # set path

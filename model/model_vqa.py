@@ -18,7 +18,6 @@ class ALBEF(nn.Module):
         super().__init__()
         
         self.tokenizer = tokenizer 
-        self.distill = config['distill']
  
         self.visual_encoder = VisionTransformer(
             img_size=config['image_res'], patch_size=16, embed_dim=768, depth=4, num_heads=2, 
@@ -32,19 +31,6 @@ class ALBEF(nn.Module):
         config_decoder.fusion_layer = 0
         config_decoder.num_hidden_layers = 6
         self.text_decoder = BertLMHeadModel.from_pretrained(text_decoder, config=config_decoder)    
-
-        if self.distill:
-            self.visual_encoder_m = VisionTransformer(
-                img_size=config['image_res'], patch_size=16, embed_dim=768, depth=12, num_heads=12, 
-                mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6))             
-            self.text_encoder_m = BertModel.from_pretrained(text_encoder, config=config_encoder, add_pooling_layer=False)   
-            self.text_decoder_m = BertLMHeadModel.from_pretrained(text_decoder, config=config_decoder)   
-            self.model_pairs = [[self.visual_encoder,self.visual_encoder_m],
-                                [self.text_encoder,self.text_encoder_m],
-                                [self.text_decoder,self.text_decoder_m],
-                               ]
-            self.copy_params()  
-            self.momentum = 0.995
         
 
     def forward(self, image, question, answer=None, alpha=0, k=None, weights=None, train=True):
@@ -77,48 +63,15 @@ class ALBEF(nn.Module):
             question_states = torch.stack(question_states,0)    
             question_atts = torch.stack(question_atts,0)     
 
-            if self.distill:                    
-                with torch.no_grad():
-                    self._momentum_update()
-                    image_embeds_m = self.visual_encoder_m(image) 
-                    question_output_m = self.text_encoder_m(question.input_ids, 
-                                                            attention_mask = question.attention_mask, 
-                                                            encoder_hidden_states = image_embeds_m,
-                                                            encoder_attention_mask = image_atts,                             
-                                                            return_dict = True)    
-
-                    question_states_m = []                
-                    for b, n in enumerate(k):
-                        question_states_m += [question_output_m.last_hidden_state[b]]*n
-                    question_states_m = torch.stack(question_states_m,0)    
-
-                    logits_m = self.text_decoder_m(answer.input_ids, 
-                                                   attention_mask = answer.attention_mask, 
-                                                   encoder_hidden_states = question_states_m,
-                                                   encoder_attention_mask = question_atts,                                  
-                                                   return_logits = True,
-                                                  )                       
-
-                answer_output = self.text_decoder(answer.input_ids, 
-                                                  attention_mask = answer.attention_mask, 
-                                                  encoder_hidden_states = question_states,
-                                                  encoder_attention_mask = question_atts,                  
-                                                  labels = answer_targets,
-                                                  return_dict = True,   
-                                                  soft_labels = F.softmax(logits_m,dim=-1),
-                                                  alpha = alpha,
-                                                #   reduction = 'none',
-                                                 )   
-            else:
-                # decode the answer based on questions state and questions att (output of multimodal encoder)
-                answer_output = self.text_decoder(answer.input_ids, 
-                                                  attention_mask = answer.attention_mask, 
-                                                  encoder_hidden_states = question_states,
-                                                  encoder_attention_mask = question_atts,                  
-                                                  labels = answer_targets,
-                                                  return_dict = True,   
-                                                #   reduction = 'none',
-                                                )                      
+            # decode the answer based on questions state and questions att (output of multimodal encoder)
+            answer_output = self.text_decoder(answer.input_ids, 
+                                                attention_mask = answer.attention_mask, 
+                                                encoder_hidden_states = question_states,
+                                                encoder_attention_mask = question_atts,                  
+                                                labels = answer_targets,
+                                                return_dict = True   
+                                            #   reduction = 'none',
+                                            )                      
             loss = weights * answer_output.loss         
             loss = loss.sum()/image.size(0)
 
@@ -130,7 +83,9 @@ class ALBEF(nn.Module):
                                                 attention_mask = question.attention_mask, 
                                                 encoder_hidden_states = image_embeds,
                                                 encoder_attention_mask = image_atts,                                    
-                                                return_dict = True)                    
+                                                return_dict = True)
+            
+                                
             topk_ids, topk_probs = self.rank_answer(question_output.last_hidden_state, question.attention_mask, 
                                                     answer.input_ids, answer.attention_mask, k) 
             return topk_ids, topk_probs
@@ -144,13 +99,6 @@ class ALBEF(nn.Module):
                 param_m.data.copy_(param.data)  # initialize
                 param_m.requires_grad = False  # not update by gradient    
 
-            
-    @torch.no_grad()        
-    def _momentum_update(self):
-        for model_pair in self.model_pairs:           
-            for param, param_m in zip(model_pair[0].parameters(), model_pair[1].parameters()):
-                param_m.data = param_m.data * self.momentum + param.data * (1. - self.momentum)
-                
                 
     def rank_answer(self, question_states, question_atts, answer_ids, answer_atts, k):
         
