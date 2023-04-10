@@ -70,16 +70,20 @@ def format_annotations():
 
         print(f'data/{phase}_formatted is saved!')
 
+data = read_file_json("data/v2_mscoco_train2014_annotations.json")
+print(0)
+print(1)
 
-if __name__ == '__main__':
-    # for phase in ['train', 'val']:
-    #     sampling_data(url=f'data/{phase}_formatted.json', saved_url=f'data/sample_{phase}_formatted.json', sampling_size=0.1)    
-    val_file = read_file_json("data/sample_val_formatted.json")
-    answer_list = []
-    for i, record in enumerate(val_file):
-        answer_list += [x['answer'] for x in record['anwers']]
-    with open("data/answer_list.json", "w") as f:
-        json.dump(answer_list, f)
+
+# if __name__ == '__main__':
+#     # for phase in ['train', 'val']:
+#     #     sampling_data(url=f'data/{phase}_formatted.json', saved_url=f'data/sample_{phase}_formatted.json', sampling_size=0.1)    
+#     val_file = read_file_json("data/sample_val_formatted.json")
+#     answer_list = []
+#     for i, record in enumerate(val_file):
+#         answer_list += [x['answer'] for x in record['anwers']]
+#     with open("data/answer_list.json", "w") as f:
+#         json.dump(answer_list, f)
 
 
 

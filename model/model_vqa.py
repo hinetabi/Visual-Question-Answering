@@ -20,10 +20,10 @@ class ALBEF(nn.Module):
         
         self.tokenizer = tokenizer 
  
-        # self.visual_encoder = VisionTransformer(
-        #     img_size=config['image_res'], patch_size=16, embed_dim=768, depth=4, num_heads=2, 
-        #     mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6))  
-        self.visual_encoder = resnet50(ResNet50_Weights.IMAGENET1K_V2)  
+        self.visual_encoder = VisionTransformer(
+            img_size=config['image_res'], patch_size=16, embed_dim=768, depth=4, num_heads=2, 
+            mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6))  
+        # self.visual_encoder = resnet50(ResNet50_Weights.IMAGENET1K_V2)  
 
         config_encoder = BertConfig.from_json_file(config['bert_config']) 
         # create the text encoder

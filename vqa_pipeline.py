@@ -23,4 +23,7 @@ idx = logits.argmax(-1).item()
 print("Predicted answer:", model.config.id2label[idx])
 print("Predicted answer: ", processor.tokenizer.decode(idx))
 
+# eval
+
+
 
