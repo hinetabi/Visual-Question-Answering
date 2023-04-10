@@ -4,7 +4,7 @@ batch_size_test: 4
 batch_size_train: 8
 bert_config: configs/config_bert.json
 checkpoint: ''
-config: configs/dataset.yaml
+config: ./configs/dataset.yaml
 device: cuda
 dist_url: env://
 distill: false

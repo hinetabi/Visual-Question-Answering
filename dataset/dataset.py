@@ -38,6 +38,10 @@ class ImageDataset(Dataset):
             image = self.transform(image)
             
         question = pre_question(ann['question'], self.max_ques_words)
+
+        if self.split == 'val':
+            return image, question, ann['question_id']
+
         ans_weights = {}
         for answer in ann['anwers']:
             answer = answer['answer']

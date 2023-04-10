@@ -132,7 +132,7 @@ def main(args, config):
                                             batch_size=[config['batch_size_train'], config['batch_size_test']], 
                                             num_workers=[4,4], 
                                             is_trains=[True, False],
-                                            collate_fns=[vqa_collate_fn, vqa_collate_fn])
+                                            collate_fns=[vqa_collate_fn, None])
     
     # tokenizer for questions and answers
     tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
@@ -164,6 +164,8 @@ def main(args, config):
     })
 
     model_without_ddp = model
+
+    evaluation(model, test_loader, tokenizer, config)
     
     for epoch in range(start_epoch, max_epoch):
         if epoch > 0:
@@ -173,7 +175,7 @@ def main(args, config):
         
         if not args.evaluate:
             train_stats = train(model, train_loader, optimizer, tokenizer, epoch, config)
-            test_stats = train(model, test_loader, optimizer, tokenizer, epoch, config)
+            test_stats = test(model, test_loader, optimizer, tokenizer, epoch, config)
             # log to wandb
             wandb.log({
                 **{f'train_{k}': v for k, v in train_stats.items()},
