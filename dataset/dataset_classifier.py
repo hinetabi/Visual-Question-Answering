@@ -9,22 +9,17 @@ from dataset.utils import pre_question
 
 class ImageDatasetClassifier(Dataset):
     """Some Information about ImageDataset"""
-    def __init__(self, ann_file, transform, vqa_root, max_ques_words = 30, answer_list = ''):
+    def __init__(self, ann_file, transform, vqa_root, max_ques_words = 30, split = 'train', answer_list = ''):
         self.ann = []
         for f in ann_file:
             self.ann += json.load(open(f,'r'))
         
+        self.split = split
         self.transform = transform
         self.vqa_root = vqa_root
         self.max_ques_words = max_ques_words
         self.answer_list = json.load(open(answer_list, 'r'))
 
-        
-    def find_answer(self, answer_list, answer):
-        for k, v in answer_list:
-            if v == answer:
-                return k
-        return -1
     
     def __getitem__(self, index):
         
@@ -41,9 +36,22 @@ class ImageDatasetClassifier(Dataset):
         question = pre_question(ann['question'], self.max_ques_words)
 
         answer = ann['multiple_choice_answer']
-        answer = self.find_answer(answer=answer, answer_list=self.answer_list)
+        answer_num = self.find_answer(answer)
+        
+        # x = torch.zeros(size=)  
+        # x[answer_num] = 1
+        # 
 
-        return image, question, answer
+
+        return image, question, torch.tensor(answer_num)
+
+    def find_answer(self, answer) -> int:
+        for k, v in self.answer_list.items():
+            if v == answer:
+                return int(k)
+            
+        print("ko co ans")
+        return 0
 
     def __len__(self):
         return len(self.ann)

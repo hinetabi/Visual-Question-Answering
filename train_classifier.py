@@ -6,7 +6,7 @@ import yaml
 import argparse
 from pathlib import Path
 import os
-from dataset import create_dataset_classifier, create_loader
+from dataset import create_dataset_classifier, create_loader, vqa_collate_fn_classifier
 from transformers import BertTokenizer
 from model.clip import QuestionAnswerClassifier
 from tqdm import tqdm
@@ -21,18 +21,19 @@ def train_one_epoch(epoch, model, trainloader, optimizer,  criterion, tokenizer)
     model.train()
 
     for  i,(image, question, labels) in tqdm(enumerate(trainloader, 0)):
-        
-        image, question = image.to(device), question.to(device)
         question_input = tokenizer(question, padding='longest', truncation=True, max_length=25, return_tensors="pt").to(device) 
+        
+        image, question_input = image.to(device), question_input.to(device)
+        labels = labels.to(device)
+        
         # zero the parameter gradients
         optimizer.zero_grad()
         
         with torch.set_grad_enabled(True):
             # forward + backward + optimize
             outputs = model(image, question_input)
-            logits = outputs.logits
             
-            loss = criterion(logits, labels)
+            loss = criterion(outputs, labels)
             _, preds = torch.max(outputs, 1)
         
             loss.backward()
@@ -49,7 +50,7 @@ def train_one_epoch(epoch, model, trainloader, optimizer,  criterion, tokenizer)
     
     return running_loss
     
-def main(config):
+def main(args, config):
     # dataloader = Dataloader(config
     datasets = create_dataset_classifier(config=config)
     
@@ -57,7 +58,7 @@ def main(config):
                                             batch_size=[config['batch_size_train'], config['batch_size_test']], 
                                             num_workers=[4,4], 
                                             is_trains=[True, False],
-                                            collate_fns=[None, None])
+                                            collate_fns=[vqa_collate_fn_classifier, vqa_collate_fn_classifier])
     
     # tokenizer for questions and answers
     tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
@@ -75,8 +76,8 @@ def main(config):
     # optimizer
     optimizer = optim.Adam(params = model.parameters(), lr = 1e-5)
     
-    for i in range(config['epoch']):
-        train_one_epoch(trainloader=train_loader, criterion = loss, optimizer= optimizer, tokenizer=tokenizer)
+    for i in range(int(config['epoch'])):
+        train_one_epoch(model = model, epoch = i, trainloader=train_loader, criterion = loss, optimizer= optimizer, tokenizer=tokenizer)
 
     return 0
 if __name__ == '__main__':
@@ -100,6 +101,4 @@ if __name__ == '__main__':
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     Path(args.result_dir).mkdir(parents=True, exist_ok=True)
         
-    yaml.dump(config, open(os.path.join(args.output_dir, 'config.yaml'), 'w'))    
-    
     main(args, config)

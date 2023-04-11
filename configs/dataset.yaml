@@ -1,8 +1,8 @@
-train_file: ['data/sample_train_formatted.json']
+train_file: ['data/train_formatted.json']
              
-test_file: ['data/sample_val_formatted.json']
-answer_list: 'data/answer_list.json'
-vqa_dict = 'data/vqa_dict.json'
+test_file: ['data/val_formatted.json']
+# answer_list: 'data/answer_list.json'
+vqa_dict: 'data/vqa_dict.json'
 
 
 vqa_root: 'data/' #train2014/

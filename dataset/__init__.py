@@ -27,8 +27,8 @@ def create_dataset_classifier(config):
     # def __init__(self, ann_file, transform, vqa_root, eos = '[SEP]', split = 'train', max_ques_words = 30, answer_list = ''):
 
 
-    train_dataset = ImageDatasetClassifier(config['train_file'], train_transform, config['vqa_root'], answer_list=config['vqa_dict']) 
-    vqa_test_dataset = ImageDatasetClassifier(config['test_file'], test_transform, config['vqa_root'], answer_list=config['vqa_dict'])       
+    train_dataset = ImageDatasetClassifier(config['train_file'], train_transform, config['vqa_root'], split='train', answer_list=config['vqa_dict']) 
+    vqa_test_dataset = ImageDatasetClassifier(config['test_file'], test_transform, config['vqa_root'], split='val', answer_list=config['vqa_dict'])       
     return train_dataset, vqa_test_dataset
 
 def create_dataset(config):
@@ -91,3 +91,16 @@ def vqa_collate_fn(batch):
     
     # torch.stack -> convert a list of n matrix a * b -> a matrix n * a * b
     return torch.stack(image_list, dim=0), question_list, answer_list, torch.Tensor(weight_list), n
+
+# transform a batch for load data into gpu
+def vqa_collate_fn_classifier(batch):
+    image_list, question_list, answer_list = [], [], []
+    for image, question, answer in batch:
+        image_list.append(image)
+        question_list.append(question)
+        answer_list.append(answer)
+    answer_list = torch.stack(answer_list, dim=0)
+    answer_list = torch.nn.functional.one_hot(answer_list, num_classes = 29331)
+
+    # torch.stack -> convert a list of n matrix a * b -> a matrix n * a * b
+    return torch.stack(image_list, dim=0), question_list, answer_list

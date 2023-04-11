@@ -61,7 +61,8 @@ def format_annotations():
                             'question_type': annotation['question_type'],
                             "question" : question['question'],
                             "answers" : annotation['answers'],
-                            "data_subtype" : phase
+                            "data_subtype" : phase,
+                            'multiple_choice_answer':annotation['multiple_choice_answer']
                         })
 
            
@@ -70,20 +71,29 @@ def format_annotations():
 
         print(f'data/{phase}_formatted is saved!')
 
-data = read_file_json("data/v2_mscoco_train2014_annotations.json")
-print(0)
-print(1)
+def get_ans():
+    ans = set()
 
+    train = read_file_json("data/train_formatted.json")
+    val = read_file_json("data/val_formatted.json")
 
-# if __name__ == '__main__':
-#     # for phase in ['train', 'val']:
-#     #     sampling_data(url=f'data/{phase}_formatted.json', saved_url=f'data/sample_{phase}_formatted.json', sampling_size=0.1)    
-#     val_file = read_file_json("data/sample_val_formatted.json")
-#     answer_list = []
-#     for i, record in enumerate(val_file):
-#         answer_list += [x['answer'] for x in record['anwers']]
-#     with open("data/answer_list.json", "w") as f:
-#         json.dump(answer_list, f)
+    for i in tqdm(train):
+        ans.add(i['multiple_choice_answer'])
+    for i in tqdm(val):
+        ans.add(i['multiple_choice_answer'])
+    dic  =  {}
+    for i, an in enumerate(ans):
+        dic [i] = an
+
+    with open(f'data/vqa_dict.json', 'w') as f:
+            json.dump(dic, f)
+
+if __name__ == '__main__':
+    # for phase in ['train', 'val']:
+    #     sampling_data(url=f'data/{phase}_formatted.json', saved_url=f'data/sample_{phase}_formatted.json', sampling_size=0.1)    
+    # format_annotations()
+
+    get_ans()
 
 
 

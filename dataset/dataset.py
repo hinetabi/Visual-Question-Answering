@@ -43,12 +43,12 @@ class ImageDataset(Dataset):
             return image, question, ann['question_id']
 
         ans_weights = {}
-        for answer in ann['anwers']:
+        for answer in ann['answers']:
             answer = answer['answer']
             if answer in ans_weights.keys():
-                ans_weights[answer] += 1/len(ann['anwers'])
+                ans_weights[answer] += 1/len(ann['answers'])
             else:
-                ans_weights[answer] = 1/len(ann['anwers'])
+                ans_weights[answer] = 1/len(ann['answers'])
 
         answers = list(ans_weights.keys())
         weights = list(ans_weights.values())
