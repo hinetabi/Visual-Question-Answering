@@ -68,7 +68,7 @@ def train_one_epoch(epoch, model, trainloader, optimizer,  criterion, tokenizer)
 
     print('Finished Training')
     
-    return running_loss
+    return loss
 
 
 def eval_one_epoch(epoch, model, testloader, optimizer,  criterion, tokenizer):
@@ -109,17 +109,7 @@ def eval_one_epoch(epoch, model, testloader, optimizer,  criterion, tokenizer):
                 f'val acc epoch {epoch}' : acc,
                 'epoch': epoch })
 
-    # print('Acc: {}%'.format(running_corrects))
-    save_obj = {
-            'model': model.state_dict(),
-            'optimizer': optimizer.state_dict(),
-            'config': config,
-            'epoch': epoch,
-        }
-    torch.save(save_obj, os.path.join(args.output_dir, "test", 'checkpoint_%02d.pth'%epoch))
-
-    print('Finished Training')
-    return running_loss
+    return loss
 
     
 def main(args, config):
