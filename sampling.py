@@ -69,8 +69,6 @@ def format_annotations():
         with open(f'data/{phase}_formatted.json', 'w') as f:
             json.dump(save_ann_for_training, f)
 
-        print(f'data/{phase}_formatted is saved!')
-
 def get_ans():
     ans = set()
 
@@ -88,12 +86,38 @@ def get_ans():
     with open(f'data/vqa_dict.json', 'w') as f:
             json.dump(dic, f)
 
+def sampling_by_ans():
+    ans = read_file_json("data/vqa_dict.json")
+    ans = ans.values()
+    trains = read_file_json("data/train_formatted.json")
+    vals = read_file_json("data/val_formatted.json")
+
+    sample_train = []
+    for train in tqdm(trains):
+        if train['multiple_choice_answer'] in ans:
+            sample_train.append(train)
+
+
+    sample_val = []
+    for val in tqdm(vals):
+        if val['multiple_choice_answer'] in ans:
+            sample_val.append(val)
+            
+    dic = {}
+    dic["sample_train"] = sample_train
+    dic["sample_val"] = sample_val
+    
+    for phase in ["sample_train", "sample_val"]:
+        with open(f'data/{phase}_formatted.json', 'w') as f:
+            json.dump(dic[phase], f)
+
 if __name__ == '__main__':
     # for phase in ['train', 'val']:
     #     sampling_data(url=f'data/{phase}_formatted.json', saved_url=f'data/sample_{phase}_formatted.json', sampling_size=0.1)    
     # format_annotations()
 
-    get_ans()
+    # get_ans()
+    sampling_by_ans()
 
 
 

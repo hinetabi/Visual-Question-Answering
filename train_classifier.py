@@ -8,10 +8,12 @@ from pathlib import Path
 import os
 from dataset import create_dataset_classifier, create_loader, vqa_collate_fn_classifier
 from transformers import BertTokenizer
-from model.clip import QuestionAnswerClassifier
+from model.vlit import QuestionAnswerClassifier
 from tqdm import tqdm
+import wandb
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
 
 def train_one_epoch(epoch, model, trainloader, optimizer,  criterion, tokenizer):
     # loop over the dataset multiple times
@@ -19,8 +21,9 @@ def train_one_epoch(epoch, model, trainloader, optimizer,  criterion, tokenizer)
     print(f'Training epoch {epoch}: ')
 
     model.train()
+    running_corrects = 0
 
-    for  i,(image, question, labels) in tqdm(enumerate(trainloader, 0)):
+    for  i,(image, question, labels) in tqdm(enumerate(trainloader)):
         question_input = tokenizer(question, padding='longest', truncation=True, max_length=25, return_tensors="pt").to(device) 
         
         image, question_input = image.to(device), question_input.to(device)
@@ -32,25 +35,108 @@ def train_one_epoch(epoch, model, trainloader, optimizer,  criterion, tokenizer)
         with torch.set_grad_enabled(True):
             # forward + backward + optimize
             outputs = model(image, question_input)
-            
             loss = criterion(outputs, labels)
             _, preds = torch.max(outputs, 1)
-        
+            running_corrects += (torch.sum(preds == labels) / config['batch_size_test'])
+
             loss.backward()
             optimizer.step()
         
         running_loss += loss.item()
-        running_corrects += torch.sum(preds == labels.data)
+        print('Loss: {}'.format(loss.item()))
+        wandb.log({
+                f'Train_iter loss': loss,
+                'iter': i,
+            })
         
+    acc = running_corrects / len(trainloader)
+    loss = running_loss / len(trainloader)
+    print('Train Acc: {}'.format(acc))
+    print('Train Epoch Loss: {}'.format(loss))
+    wandb.log({ f'train loss epoch {epoch}': loss,
+                f'train acc epoch {epoch}' : acc,
+                'epoch': epoch })
 
-    print('Loss: {}'.format(running_loss))
-    print('Acc: {}%'.format(running_corrects))
+    # print('Acc: {}%'.format(running_corrects))
+    save_obj = {
+            'model': model.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'config': config,
+            'epoch': epoch,
+        }
+    torch.save(save_obj, os.path.join(args.output_dir, "train", 'checkpoint_%02d.pth'%epoch))
 
     print('Finished Training')
     
     return running_loss
+
+
+def eval_one_epoch(epoch, model, testloader, optimizer,  criterion, tokenizer):
+    # loop over the dataset multiple times
+    running_loss = 0.0
+    print(f'Evaluate epoch {epoch}: ')
+
+    model.train()
+    running_corrects = 0
+
+    for  i,(image, question, labels) in tqdm(enumerate(testloader)):
+        question_input = tokenizer(question, padding='longest', truncation=True, max_length=25, return_tensors="pt").to(device) 
+        
+        image, question_input = image.to(device), question_input.to(device)
+        labels = labels.to(device)
+        
+        # zero the parameter gradients
+        optimizer.zero_grad()
+        with torch.set_grad_enabled(False):
+            # forward + backward + optimize
+            outputs = model(image, question_input)
+            
+            loss = criterion(outputs, labels)
+            _, preds = torch.max(outputs, 1)
+            running_corrects += (torch.sum(preds == labels) / config['batch_size_test'])
+
+        running_loss += loss.item()
+        wandb.log({
+                f'Val_iter loss': loss,
+                'iter': i,
+            })
+        
+    acc = running_corrects / len(testloader)
+    loss = running_loss / len(testloader)
+    print('Val Acc: {}'.format(acc))
+    print('Val Epoch Loss: {}'.format(loss))
+    wandb.log({ f'val loss epoch {epoch}': loss,
+                f'val acc epoch {epoch}' : acc,
+                'epoch': epoch })
+
+    # print('Acc: {}%'.format(running_corrects))
+    save_obj = {
+            'model': model.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'config': config,
+            'epoch': epoch,
+        }
+    torch.save(save_obj, os.path.join(args.output_dir, "test", 'checkpoint_%02d.pth'%epoch))
+
+    print('Finished Training')
+    return running_loss
+
     
 def main(args, config):
+
+    # wandb init
+    run = wandb.init(
+    # Set the project where this run will be logged
+    project="visual question answering",
+    # Track hyperparameters and run metadata
+    config={
+        "learning_rate": config['optimizer']['lr'],
+        "epochs": config['schedular']['epochs'],
+        
+    },
+    name= "vqa_vlit_classifier")
+
+
     # dataloader = Dataloader(config
     datasets = create_dataset_classifier(config=config)
     
@@ -74,16 +160,20 @@ def main(args, config):
     loss = nn.CrossEntropyLoss()
 
     # optimizer
-    optimizer = optim.Adam(params = model.parameters(), lr = 1e-5)
+    optimizer = optim.Adam(params = model.parameters(), lr = float(config['optimizer']['lr']))
     
-    for i in range(int(config['epoch'])):
-        train_one_epoch(model = model, epoch = i, trainloader=train_loader, criterion = loss, optimizer= optimizer, tokenizer=tokenizer)
+    for epoch in range(int(config['epoch'])):
+        train_stats = train_one_epoch(model = model, epoch = epoch, trainloader=train_loader, criterion = loss, optimizer= optimizer, tokenizer=tokenizer)
+        torch.save(model.state_dict(), "output/vilt_classifier.pth")
+        test_stats = eval_one_epoch(model=model, epoch=epoch, testloader=val_loader, criterion=loss, optimizer=optimizer, tokenizer=tokenizer)
 
+    wandb.finish()
+    torch.save(model.state_dict(), "output/vilt_classifier.pth")
     return 0
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', default='./configs/dataset.yaml') 
-    parser.add_argument('--output_dir', default='output/albef')
+    parser.add_argument('--output_dir', default='output/vilt_vqa')
     parser.add_argument('--text_encoder', default='bert-base-uncased')
     parser.add_argument('--text_decoder', default='bert-base-uncased')
     parser.add_argument('--epoch', default='5')

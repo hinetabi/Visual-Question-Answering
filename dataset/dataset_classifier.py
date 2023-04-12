@@ -38,17 +38,13 @@ class ImageDatasetClassifier(Dataset):
         answer = ann['multiple_choice_answer']
         answer_num = self.find_answer(answer)
         
-        # x = torch.zeros(size=)  
-        # x[answer_num] = 1
-        # 
-
-
         return image, question, torch.tensor(answer_num)
 
     def find_answer(self, answer) -> int:
         for k, v in self.answer_list.items():
             if v == answer:
                 return int(k)
+                
             
         print("ko co ans")
         return 0

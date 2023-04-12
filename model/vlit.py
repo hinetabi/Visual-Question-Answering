@@ -7,6 +7,7 @@ import torch.optim as optim
 from transformers import BertConfig, BertModel, BertForQuestionAnswering
 from model.ViT import VisionTransformer
 from functools import partial
+from transformers import AutoModelForSequenceClassification
 
 class QuestionAnswerClassifier(nn.Module):
     def __init__(self,                 
@@ -14,7 +15,7 @@ class QuestionAnswerClassifier(nn.Module):
                  text_decoder = None,
                  tokenizer = None,
                  config = None, 
-                 n_labels = 29331    
+                 n_labels = 3129    
                  ):
         super().__init__()
         self.visual_encoder = VisionTransformer(
@@ -34,14 +35,11 @@ class QuestionAnswerClassifier(nn.Module):
         # self.tokenizer =  tokenizer
         
         self.classifier = nn.Sequential(
-            nn.Linear(in_features=768, out_features=1000),
+            nn.Linear(in_features=768, out_features=768*2),
             nn.Dropout(p=0.1, inplace=False),
-            nn.Linear(in_features=1000, out_features=10000),
-            nn.Dropout(p=0.1, inplace=False),
-            nn.Linear(in_features=10000, out_features=n_labels),
+            nn.Linear(in_features=768*2, out_features=n_labels),
             nn.Dropout(p=0.1, inplace=False)
-        )
-        
+        )        
     def forward(self, image, question):
         image_embeds = self.visual_encoder(image)
         image_atts = torch.ones(image_embeds.size()[:-1],dtype=torch.long).to(image.device)
@@ -53,8 +51,9 @@ class QuestionAnswerClassifier(nn.Module):
                                             attention_mask = question.attention_mask, 
                                             encoder_hidden_states = image_embeds,
                                             encoder_attention_mask = image_atts,                             
-                                            return_dict = True)
+                                            return_dict = True  )
         
         
         # process the question_encoder after a classification
-        return self.classifier(question_encoder.last_hidden_state)
+        # cls token is the first of last hidden state
+        return self.classifier(question_encoder.last_hidden_state[:, 0, :])

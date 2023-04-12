@@ -99,8 +99,6 @@ def vqa_collate_fn_classifier(batch):
         image_list.append(image)
         question_list.append(question)
         answer_list.append(answer)
-    answer_list = torch.stack(answer_list, dim=0)
-    answer_list = torch.nn.functional.one_hot(answer_list, num_classes = 29331)
 
     # torch.stack -> convert a list of n matrix a * b -> a matrix n * a * b
-    return torch.stack(image_list, dim=0), question_list, answer_list
+    return torch.stack(image_list, dim=0), question_list, torch.tensor(answer_list)
