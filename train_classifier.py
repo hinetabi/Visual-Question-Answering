@@ -43,7 +43,7 @@ def train_one_epoch(epoch, model, trainloader, optimizer,  criterion, tokenizer)
             optimizer.step()
         
         running_loss += loss.item()
-        print('Loss: {}'.format(loss.item()))
+        print(f'Loss: {loss.item()}, epoch: {epoch}')
         wandb.log({
                 f'Train_iter loss': loss,
                 'iter': i,
@@ -53,8 +53,8 @@ def train_one_epoch(epoch, model, trainloader, optimizer,  criterion, tokenizer)
     loss = running_loss / len(trainloader)
     print('Train Acc: {}'.format(acc))
     print('Train Epoch Loss: {}'.format(loss))
-    wandb.log({ f'train loss epoch {epoch}': loss,
-                f'train acc epoch {epoch}' : acc,
+    wandb.log({ f'train loss per epoch': loss,
+                f'train acc per epoch' : acc,
                 'epoch': epoch })
 
     # print('Acc: {}%'.format(running_corrects))
@@ -105,8 +105,8 @@ def eval_one_epoch(epoch, model, testloader, optimizer,  criterion, tokenizer):
     loss = running_loss / len(testloader)
     print('Val Acc: {}'.format(acc))
     print('Val Epoch Loss: {}'.format(loss))
-    wandb.log({ f'val loss epoch {epoch}': loss,
-                f'val acc epoch {epoch}' : acc,
+    wandb.log({ f'val loss per epoch': loss,
+                f'val acc per epoch' : acc,
                 'epoch': epoch })
 
     return loss
@@ -145,7 +145,9 @@ def main(args, config):
     print("Creating model")
     model = QuestionAnswerClassifier(config=config, text_encoder=args.text_encoder)
     model = model.to(device)
-    
+
+    # load state dict
+    # model.load_state_dict(torch.load('output/vilt_classifier.pth'))
     # loss
     loss = nn.CrossEntropyLoss()
 

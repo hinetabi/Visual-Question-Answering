@@ -20,5 +20,5 @@ eos: '[SEP]'
 
 bert_config: 'configs/config_bert.json'
 
-optimizer: {opt: adamW, lr: 2e-5, weight_decay: 0.02}
+optimizer: {opt: adamW, lr: 2e-6, weight_decay: 0.02}
 schedular: {sched: cosine, lr: 2e-6, epochs: 8, min_lr: 1e-6, decay_rate: 1, warmup_lr: 1e-5, warmup_epochs: 4, cooldown_epochs: 0}
