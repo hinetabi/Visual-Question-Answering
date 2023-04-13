@@ -33,7 +33,7 @@ def train(model, train_loader, optimizer, tokenizer, epoch, config):
     print_freq = 50    
     
     # loop over the dataset multiple times
-    running_loss = 0.0
+    running_loss = 0
     for i,(image, question, answer, weights, n) in tqdm(enumerate(metric_logger.log_every(train_loader, print_freq, header))):
         image, weights = image.to(device,non_blocking=True), weights.to(device,non_blocking=True)      
         question_input = tokenizer(question, padding='longest', truncation=True, max_length=25, return_tensors="pt").to(device) 
@@ -52,14 +52,22 @@ def train(model, train_loader, optimizer, tokenizer, epoch, config):
         metric_logger.update(loss=loss.item())
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
         
+        running_loss += loss.item()
+        wandb.log({
+                'Train_iter loss': loss,
+            })
     
-    running_loss = running_loss / i
+    running_loss = running_loss / len(train_loader)
     print("Averaged stats:", metric_logger.global_avg())         
+
+    wandb.log({'train loss per epoch': running_loss,
+                'epoch': epoch })
+
     return {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()} 
 
 
 @torch.no_grad()
-def test(model, train_loader, optimizer, tokenizer, epoch, config):
+def test(model, test_loader, optimizer, tokenizer, epoch, config):
     model.train()
     
     metric_logger = utils.MetricLogger(delimiter=" ")
@@ -70,20 +78,27 @@ def test(model, train_loader, optimizer, tokenizer, epoch, config):
     
     # loop over the dataset multiple times
     running_loss = 0.0
-    for i,(image, question, answer, weights, n) in tqdm(enumerate(metric_logger.log_every(train_loader, print_freq, header))):
+    for i,(image, question, answer, weights, n) in tqdm(enumerate(metric_logger.log_every(test_loader, print_freq, header))):
         image, weights = image.to(device,non_blocking=True), weights.to(device,non_blocking=True)      
         question_input = tokenizer(question, padding='longest', truncation=True, max_length=25, return_tensors="pt").to(device) 
         answer_input = tokenizer(answer, padding='longest', return_tensors="pt").to(device) 
         
         with torch.no_grad():
-            loss = model(image, question_input, answer_input, train=False, alpha=config['alpha'], k=n, weights=weights)        
+            loss = model(image, question_input, answer_input, alpha=config['alpha'], k=n, weights=weights)        
         # log to terminal
         metric_logger.update(loss=loss.item())
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
-        
+
+        wandb.log({
+                'Val_iter loss': loss,
+            })
     
-    running_loss = running_loss / i
+    running_loss = running_loss / len(test_loader)
+
     print("Averaged stats:", metric_logger.global_avg())         
+    wandb.log({'val loss per epoch': running_loss,
+                'epoch': epoch })
+    
     return {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()} 
 
 
@@ -132,10 +147,10 @@ def main(args, config):
                                             batch_size=[config['batch_size_train'], config['batch_size_test']], 
                                             num_workers=[4,4], 
                                             is_trains=[True, False],
-                                            collate_fns=[vqa_collate_fn, None])
+                                            collate_fns=[vqa_collate_fn, vqa_collate_fn])
     
     # tokenizer for questions and answers
-    tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
+    tokenizer = utils.init_tokenizer(args.text_encoder)
     
     #### Model #### 
     print("Creating model")
@@ -158,67 +173,42 @@ def main(args, config):
     # Set the project where this run will be logged
     project="visual question answering",
     # Track hyperparameters and run metadata
+
     config={
         "learning_rate": config['optimizer']['lr'],
         "epochs": config['schedular']['epochs'],
-    })
+    },
+    name="blip_vqa")
 
-    model_without_ddp = model
-
-    evaluation(model, test_loader, tokenizer, config)
-    
+    # model_without_ddp = model
     for epoch in range(start_epoch, max_epoch):
         if epoch > 0:
             a = 0
-
         print(torch.cuda.memory_summary(device=None, abbreviated=False))
-        
+        train_stats = 0
         if not args.evaluate:
             train_stats = train(model, train_loader, optimizer, tokenizer, epoch, config)
+            torch.save(model, os.path.join(config['output_dir'], "model_vqa.pth"))
             test_stats = test(model, test_loader, optimizer, tokenizer, epoch, config)
-            # log to wandb
-            wandb.log({
-                **{f'train_{k}': v for k, v in train_stats.items()},
-                'epoch': epoch,
-            })
             
-            wandb.log({**{f'test_{k}': v for k, v in test_stats.items()},
-                         'epoch': epoch,
-                        })
-            
-        
         if args.evaluate:
             break
             
         # save log for training
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                          'epoch': epoch,
-                        }                
+                        }
+                        
         with open(os.path.join(args.output_dir, "train", "log.txt"),"a") as f:
             f.write(json.dumps(log_stats) + "\n")                        
                         
         save_obj = {
-            'model': model_without_ddp.state_dict(),
+            'model': model.state_dict(),
             'optimizer': optimizer.state_dict(),
             'config': config,
             'epoch': epoch,
         }
         torch.save(save_obj, os.path.join(args.output_dir, "train", 'checkpoint_%02d.pth'%epoch))
-        
-        # save log for testing
-        log_stats = {**{f'test_{k}': v for k, v in test_stats.items()},
-                         'epoch': epoch,
-                        }                
-        with open(os.path.join(args.output_dir,"test", "log.txt"),"a") as f:
-            f.write(json.dumps(log_stats) + "\n")                        
-                        
-        save_obj = {
-            'model': model_without_ddp.state_dict(),
-            'optimizer': optimizer.state_dict(),
-            'config': config,
-            'epoch': epoch,
-        }
-        torch.save(save_obj, os.path.join(args.output_dir, "test", 'checkpoint_%02d.pth'%epoch))
 
     # evaluating
     # vqa_result = eval(model, test_loader, tokenizer, config)
@@ -226,14 +216,14 @@ def main(args, config):
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     
     print('Training time {}'.format(total_time_str)) 
-    torch.save(model, os.path.join(config['output_dir'], "model.pth"))
+    torch.save(model, os.path.join(config['output_dir'], "model_vqa.pth"))
     return 0
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', default='./configs/dataset.yaml') 
     parser.add_argument('--checkpoint', default='') 
-    parser.add_argument('--output_dir', default='output/albef')
+    parser.add_argument('--output_dir', default='output/blip_vqa')
     parser.add_argument('--evaluate', action='store_true')    
     parser.add_argument('--text_encoder', default='bert-base-uncased')
     parser.add_argument('--text_decoder', default='bert-base-uncased')

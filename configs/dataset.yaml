@@ -1,7 +1,7 @@
 train_file: ['data/sample_train_formatted.json']
              
 test_file: ['data/sample_val_formatted.json']
-# answer_list: 'data/answer_list.json'
+answer_list: 'data/answer_list.json'
 vqa_dict: 'data/vqa_dict.json'
 
 

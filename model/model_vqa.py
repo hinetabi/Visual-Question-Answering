@@ -14,16 +14,15 @@ class ALBEF(nn.Module):
                  text_encoder = None,
                  text_decoder = None,
                  tokenizer = None,
-                 config = None,     
+                 config = None,  
                  ):
         super().__init__()
         
         self.tokenizer = tokenizer 
- 
+
         self.visual_encoder = VisionTransformer(
             img_size=config['image_res'], patch_size=16, embed_dim=768, depth=4, num_heads=2, 
             mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6))  
-        # self.visual_encoder = resnet50(ResNet50_Weights.IMAGENET1K_V2)  
 
         config_encoder = BertConfig.from_json_file(config['bert_config']) 
         # create the text encoder
@@ -33,9 +32,12 @@ class ALBEF(nn.Module):
         config_decoder.fusion_layer = 0
         config_decoder.num_hidden_layers = 6
         self.text_decoder = BertLMHeadModel.from_pretrained(text_decoder, config=config_decoder)    
+
+        self.text_decoder.resize_token_embeddings(len(self.tokenizer))
+        self.text_encoder.resize_token_embeddings(len(self.tokenizer))
         
 
-    def forward(self, image, question, answer=None, alpha=0, k=None, weights=None, train=True):
+    def forward(self, image, question, answer=None, alpha=0, k=None, weights=None, train=True, generate = False, tokenizer = None):
         
         # encode the image
         image_embeds = self.visual_encoder(image) 
@@ -78,9 +80,51 @@ class ALBEF(nn.Module):
             loss = loss.sum()/image.size(0)
 
             return loss
+        if generate: # generate # if generate, question is not tokenized before load into model
+            question = self.tokenizer(question, padding='longest', truncation=True, max_length=35, 
+                                  return_tensors="pt").to(image.device) 
             
+            question.input_ids[:,0] = self.tokenizer.enc_token_id
 
-        else: 
+            question_output = self.text_encoder(question.input_ids, 
+                                                attention_mask = question.attention_mask, 
+                                                encoder_hidden_states = image_embeds,
+                                                encoder_attention_mask = image_atts,                                    
+                                                return_dict = True) 
+            
+            # generate 
+            num_beams = 3
+
+            question_states = []                
+            question_atts = []  
+            # k = [3]
+
+            # add state and att for cross attention
+            for b, n in enumerate([num_beams]):
+                question_states += [question_output.last_hidden_state[b]]*n
+                question_atts += [question.attention_mask[b]]*n 
+            question_states = torch.stack(question_states,0)    
+            question_atts = torch.stack(question_atts,0) 
+
+            model_kwargs = {"encoder_hidden_states": question_states, "encoder_attention_mask":question_atts}
+            
+            bos_ids = torch.full((image.size(0),1),fill_value=self.tokenizer.bos_token_id,device=image.device)
+            
+            outputs = self.text_decoder.generate(input_ids=bos_ids,
+                                                    max_length=10,
+                                                    min_length=1,
+                                                    num_beams=num_beams,
+                                                    eos_token_id=self.tokenizer.sep_token_id,
+                                                    pad_token_id=self.tokenizer.pad_token_id, 
+                                                    **model_kwargs)
+            
+            answers = []    
+            for output in outputs:
+                answer = self.tokenizer.decode(output, skip_special_tokens=True)    
+                answers.append(answer)
+            return answers
+        
+        if not train: 
             question_output = self.text_encoder(question.input_ids, 
                                                 attention_mask = question.attention_mask, 
                                                 encoder_hidden_states = image_embeds,
@@ -91,8 +135,6 @@ class ALBEF(nn.Module):
             topk_ids, topk_probs = self.rank_answer(question_output.last_hidden_state, question.attention_mask, 
                                                     answer.input_ids, answer.attention_mask, k) 
             return topk_ids, topk_probs
- 
-
 
     @torch.no_grad()    
     def copy_params(self):

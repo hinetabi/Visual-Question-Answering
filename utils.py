@@ -256,3 +256,13 @@ def init_distributed_mode(args):
                                          world_size=args.world_size, rank=args.rank)
     torch.distributed.barrier()
     setup_for_distributed(args.rank == 0)
+
+def init_tokenizer(text_encoder):
+    from transformers import BertTokenizer
+    
+    tokenizer = BertTokenizer.from_pretrained(text_encoder)
+    tokenizer.add_special_tokens({'bos_token':'[DEC]'})
+    tokenizer.add_special_tokens({'additional_special_tokens':['[ENC]']})       
+    tokenizer.enc_token_id = tokenizer.additional_special_tokens_ids[0]  
+
+    return tokenizer

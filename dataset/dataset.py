@@ -39,8 +39,8 @@ class ImageDataset(Dataset):
             
         question = pre_question(ann['question'], self.max_ques_words)
 
-        if self.split == 'val':
-            return image, question, ann['question_id']
+        # if self.split == 'val':
+        #     return image, question, ann['question_id']
 
         ans_weights = {}
         for answer in ann['answers']:
